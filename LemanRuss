@@ -1,0 +1,177 @@
+#define SPEED_1      5 //left PWM
+#define DIR_1        4 //HIGH to forward
+#define SPEED_2      6 //right PWM
+#define DIR_2        7 //HIGH to forward
+#define gear_sound   80
+#define gear_1       160
+#define gear_2       250
+#define trigPin      3 //HC-SR04 Trig
+#define echoPin      2 //HC-SR04 Echo
+#define min_distance 35 //in centimetres
+#define breaking_rc  '_'
+#define accelerat_rc 'w'
+#define back_rc      's'
+#define right_rc     'd'
+#define left_rc      'a'
+#define gear1_rc     '<'
+#define gear2_rc     '>'
+#define changemod_rc 'm'
+byte ran = 0; //random variable
+bool manual = true; //is radio control enable
+byte cur_speed = gear_2;
+void ready_beep(){
+  analogWrite(SPEED_1, gear_sound);
+  analogWrite(SPEED_2, gear_sound);
+  delay(256);
+  analogWrite(SPEED_1, 0);
+  analogWrite(SPEED_2, 0);
+  delay(128);
+  analogWrite(SPEED_1, gear_sound);
+  analogWrite(SPEED_2, gear_sound);
+  delay(256);
+  analogWrite(SPEED_1, 0);
+  analogWrite(SPEED_2, 0);
+  delay(128);
+  analogWrite(SPEED_1, gear_sound);
+  analogWrite(SPEED_2, gear_sound);
+  delay(256);
+  analogWrite(SPEED_1, 0);
+  analogWrite(SPEED_2, 0);
+  delay(128);
+  analogWrite(SPEED_1, gear_sound);
+  analogWrite(SPEED_2, gear_sound);
+  delay(128);
+  analogWrite(SPEED_1, 0);
+  analogWrite(SPEED_2, 0);
+  delay(64);
+  analogWrite(SPEED_1, gear_sound);
+  analogWrite(SPEED_2, gear_sound);
+  delay(128);
+  analogWrite(SPEED_1, 0);
+  analogWrite(SPEED_2, 0);
+  delay(64);
+  analogWrite(SPEED_1, gear_sound);
+  analogWrite(SPEED_2, gear_sound);
+  delay(128);
+  analogWrite(SPEED_1, 0);
+  analogWrite(SPEED_2, 0);
+}
+void INIT(){
+  if (manual) {
+    while (!Serial.available());
+    if (Serial.available()) {
+      if (Serial.read() == 'p')
+        if (manual)
+          Serial.write('1');
+        else
+          Serial.write('0');
+      while (!Serial.available());
+      if (Serial.read() == breaking_rc) //ready
+        ready_beep();
+      else { //error + non-manual
+        manual = false;
+        analogWrite(SPEED_1, gear_sound);
+        analogWrite(SPEED_2, gear_sound);
+        delay(256);
+        analogWrite(SPEED_1, 0);
+        analogWrite(SPEED_2, 0);
+        delay(256);
+        analogWrite(SPEED_1, gear_sound);
+        analogWrite(SPEED_2, gear_sound);
+        delay(512);
+        analogWrite(SPEED_1, 0);
+        analogWrite(SPEED_2, 0);
+      }
+    }
+  } else
+    ready_beep();
+}
+void accelerat(){
+  digitalWrite(DIR_1, HIGH);
+  digitalWrite(DIR_2, HIGH);
+  analogWrite(SPEED_1, cur_speed);
+  analogWrite(SPEED_2, cur_speed);
+}
+void breaking(){
+  analogWrite(SPEED_1, 0);
+  analogWrite(SPEED_2, 0);
+}
+void left(){
+  digitalWrite(DIR_1, LOW);
+  digitalWrite(DIR_2, HIGH);
+  analogWrite(SPEED_1, cur_speed);
+  analogWrite(SPEED_2, cur_speed);
+  delay(1500);
+}
+void right(){
+  digitalWrite(DIR_1, HIGH);
+  digitalWrite(DIR_2, LOW);
+  analogWrite(SPEED_1, cur_speed);
+  analogWrite(SPEED_2, cur_speed);
+}
+void back(){
+  digitalWrite(DIR_1, LOW);
+  digitalWrite(DIR_2, LOW);
+  analogWrite(SPEED_1, cur_speed);
+  analogWrite(SPEED_2, cur_speed);
+}
+float distance(){
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(5); //2-5 μs
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10); //10 μs
+  digitalWrite(trigPin, LOW);
+  return pulseIn(echoPin, HIGH) / 58.2;
+}
+void setup() {    
+  for(int i = 4; i <= 7; i++)    
+    pinMode(i, OUTPUT);  
+  pinMode(12, INPUT);
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  randomSeed(analogRead(0));
+  Serial.begin(9600);
+}
+void loop() {
+  if (manual)
+    while (Serial.available())
+      switch (Serial.read()) {
+        case accelerat_rc:
+          accelerat();
+          break;
+        case back_rc:
+          back();
+          break;
+        case right_rc:
+          right();
+          break;
+        case left_rc:
+          left();
+          break;
+        case gear1_rc:
+          cur_speed = gear_1;
+          break;
+        case gear2_rc:
+          cur_speed = gear_2;
+          break;
+        case changemod_rc:
+          manual = !manual;
+          break;
+        default:
+          breaking();
+          break;
+      }
+  else 
+    if (distance() < min_distance) {
+      breaking();
+      if (ran % 2 == 0)
+        left();
+      else
+        right();
+      delay(512);//продолжительность автоповорота
+    }
+    else {
+      ran = random();
+      accelerat();
+    }
+}

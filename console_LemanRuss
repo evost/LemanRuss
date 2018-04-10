@@ -1,0 +1,88 @@
+#define switchPinA   11 // кнопка джойстика A
+#define switchPinB   12 // кнопка джойстика B
+#define pinAX        0 // Ось X джойстика A
+#define pinAY        1 // Ось Y джойстика A
+#define pinBX        2 // Ось X джойстика B
+#define pinBY        3 // Ось Y джойстика B
+#define ledPin       13
+#define breaking_rc  '_'
+#define accelerat_rc 'w'
+#define back_rc      's'
+#define right_rc     'd'
+#define left_rc      'a'
+#define gear1_rc     '<'
+#define gear2_rc     '>'
+#define changemod_rc 'm'
+int calibrateAX = 512;
+int calibrateAY = 512;
+int ax = calibrateAX;
+int ay = calibrateAY;
+bool manual = true;
+char next_cmd = breaking_rc;
+char cur_cmd = breaking_rc;
+char next_gear = gear2_rc;
+char cur_gear = gear2_rc;
+void INIT() {
+  while (true) {
+    delay(128);
+    Serial.write('p');
+    if (Serial.available()) {
+      if (Serial.read() == '1') {
+        manual = true;
+        digitalWrite(ledPin, HIGH);
+      } else {
+        manual = false;
+        digitalWrite(ledPin, LOW);
+      }
+      Serial.write(breaking_rc);
+      break;
+    }
+  }
+}
+void setup() {
+  pinMode(ledPin, OUTPUT);
+  pinMode(switchPinA, INPUT);
+  //digitalWrite(switchPinA, LOW); // включаем встроенный стягивающий резистор (А нужно ли?)
+  digitalWrite(ledPin, LOW);
+  calibrateAX = analogRead(pinAX);
+  calibrateAY = analogRead(pinAY);
+  Serial.begin(9600);
+  INIT();
+}
+void loop() {
+  if (digitalRead(switchPinA) == HIGH) {
+    Serial.write(changemod_rc);
+    manual = !manual;
+    if (manual)
+      digitalWrite(ledPin, HIGH);
+    else
+      digitalWrite(ledPin, LOW);
+    while (digitalRead(switchPinA) == HIGH);
+  }
+  if (manual) {
+    ax = analogRead(pinAX); // считываем аналоговое значение оси Х джойстика A
+    ay = analogRead(pinAY); // считываем аналоговое значение оси Y джойстика A
+    if ((ax <= calibrateAX - 102*3) || (ay <= calibrateAY - 102*3) || (ax >= calibrateAX + 102*3) || (ay >= calibrateAY + 102*3))
+      next_gear = gear2_rc;
+    else
+      next_gear = gear1_rc;
+    if (next_gear != cur_gear) {
+      cur_gear = next_gear;
+      Serial.write(cur_gear);
+    }
+    if (ax < calibrateAX - 102)
+      next_cmd = left_rc;
+    else if (ax > calibrateAX + 102)
+      next_cmd = right_rc;
+    else if (ay < calibrateAY - 102)
+      next_cmd = back_rc;
+    else if (ay > calibrateAY + 102)
+      next_cmd = accelerat_rc;
+    else
+      next_cmd = breaking_rc;
+    if (next_cmd != cur_cmd) {
+      cur_cmd = next_cmd;
+      Serial.write(cur_cmd);
+    }
+  }
+}
