@@ -5,8 +5,10 @@
 #define gear_sound   80
 #define gear_1       160
 #define gear_2       250
-#define trigPin      3 //HC-SR04 Trig
-#define echoPin      2 //HC-SR04 Echo
+#define trigPin_left 3 //HC-SR04 Trig
+#define echoPin_left 2 //HC-SR04 Echo
+#define trigPin_right 9 //HC-SR04 Trig
+#define echoPin_right 8 //HC-SR04 Echo
 #define min_distance 35 //in centimetres
 #define breaking_rc  '_'
 #define accelerat_rc 'w'
@@ -115,20 +117,30 @@ void back(){
   analogWrite(SPEED_1, cur_speed);
   analogWrite(SPEED_2, cur_speed);
 }
-float distance(){
-  digitalWrite(trigPin, LOW);
+float distance_left(){
+  digitalWrite(trigPin_left, LOW);
   delayMicroseconds(5); //2-5 μs
-  digitalWrite(trigPin, HIGH);
+  digitalWrite(trigPin_left, HIGH);
   delayMicroseconds(10); //10 μs
-  digitalWrite(trigPin, LOW);
-  return pulseIn(echoPin, HIGH) / 58.2;
+  digitalWrite(trigPin_left, LOW);
+  return pulseIn(echoPin_left, HIGH) / 58.2;
+}
+float distance_right(){
+  digitalWrite(trigPin_right, LOW);
+  delayMicroseconds(5); //2-5 μs
+  digitalWrite(trigPin_right, HIGH);
+  delayMicroseconds(10); //10 μs
+  digitalWrite(trigPin_right, LOW);
+  return pulseIn(echoPin_right, HIGH) / 58.2;
 }
 void setup() {    
   for(int i = 4; i <= 7; i++)    
     pinMode(i, OUTPUT);  
   pinMode(12, INPUT);
-  pinMode(trigPin, OUTPUT);
-  pinMode(echoPin, INPUT);
+  pinMode(trigPin_left, OUTPUT);
+  pinMode(echoPin_left, INPUT);
+  pinMode(trigPin_right, OUTPUT);
+  pinMode(echoPin_right, INPUT);
   randomSeed(analogRead(0));
   Serial.begin(9600);
 }
@@ -162,13 +174,13 @@ void loop() {
           break;
       }
   else 
-    if (distance() < min_distance) {
+    if ((distance_left() < min_distance) || (distance_right() < min_distance)) {
       breaking();
-      if (ran % 2 == 0)
+      if (distance_left() >= distance_right())
         left();
       else
         right();
-      delay(512);//продолжительность автоповорота
+      //delay(512);//продолжительность автоповорота
     }
     else {
       ran = random();
