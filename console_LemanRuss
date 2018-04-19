@@ -1,25 +1,34 @@
-#define switchPinA  11 // кнопка джойстика A
-#define switchPinB  12 // кнопка джойстика B
-#define pinAX       A0 // Ось X джойстика A
-#define pinAY       A1 // Ось Y джойстика A
-#define pinBX       A2 // Ось X джойстика B
-#define pinBY       A3 // Ось Y джойстика B
+#define switchPinA  11
+#define switchPinB  12
+#define pinAX       A0
+#define pinAY       A1
+#define pinBX       A2
+#define pinBY       A3
 #define ledPin      13
-#define bounce      64
+#define bounce      32
 #define breaking_rc '_'
 #define forward_rc  'w'
 #define back_rc     's'
 #define right_rc    'd'
 #define left_rc     'a'
+#define forward2_rc '8'
+#define back2_rc    '2'
+#define right2_rc   '6'
+#define left2_rc    '4'
 #define gear1_rc    '<'
 #define gear2_rc    '>'
 #define changmod_rc 'm'
+#define changsrv_rc 'z'
 int calibrateAX = 512;
-int calibrateAY = 512;                                                                                           
+int calibrateAY = 512;    
+int calibrateBX = 512;
+int calibrateBY = 512;                                                                                           
 int ax = calibrateAX;
-int ay = calibrateAY;
+int ay = calibrateAY;                                                                                        
+int bx = calibrateBX;
+int by = calibrateBY;
 bool manual = true;
-char tmp = breaking_rc;
+bool servo = false;
 char cur_cmd = breaking_rc;
 char next_cmd = cur_cmd;
 char cur_gear = gear2_rc;
@@ -27,11 +36,15 @@ char next_gear = cur_gear;
 void setup() {
   pinMode(ledPin, OUTPUT);
   pinMode(switchPinA, INPUT);
-  digitalWrite(switchPinA, HIGH); // включаем встроенный подтягивающий резистор
+  digitalWrite(switchPinA, HIGH);
+  pinMode(switchPinB, INPUT);
+  digitalWrite(switchPinB, HIGH);
   calibrateAX = analogRead(pinAX);
   calibrateAY = analogRead(pinAY);
+  calibrateBX = analogRead(pinBX);
+  calibrateBY = analogRead(pinBY);
   Serial.begin(9600);
-  while (!Serial){};
+  while (!Serial);
   while (true) {
     digitalWrite(ledPin, HIGH);
     delay(256);
@@ -39,55 +52,78 @@ void setup() {
     delay(256);
     Serial.write('p');
     if (Serial.available()) {
-      while (tmp != '1' || tmp != '0')
-        tmp = Serial.read();
-      if (tmp == '1') {
-        manual = true;
-        digitalWrite(ledPin, HIGH);
-        Serial.write(breaking_rc);
-        break;
-      } else {
-        manual = false;
-        digitalWrite(ledPin, LOW);
-        break;
-      }
+      while (Serial.read() != '1');
+      digitalWrite(ledPin, HIGH);
+      Serial.write(breaking_rc);
+      break;
     }
   }
 }
 void loop() {
-  if (digitalRead(switchPinA) == LOW) {
-    Serial.write(changmod_rc);
-    manual = !manual;
-    if (manual)
-      digitalWrite(ledPin, HIGH);
-    else
-      digitalWrite(ledPin, LOW);
-    while (digitalRead(switchPinA) == LOW){};
+  if (digitalRead(switchPinB) == LOW){
+    Serial.write(changsrv_rc);
+    servo = !servo;
+    while (digitalRead(switchPinB) == LOW);
   }
-  if (manual) {
-    ax = analogRead(pinAX); // считываем аналоговое значение оси Х джойстика A
-    ay = analogRead(pinAY); // считываем аналоговое значение оси Y джойстика A
-    if ((ax <= calibrateAX - bounce*3) || (ay <= calibrateAY - bounce*3) || (ax >= calibrateAX + bounce*3) || (ay >= calibrateAY + bounce*3))
-      next_gear = gear2_rc;
-    else
-      next_gear = gear1_rc;
-    if (next_gear != cur_gear) {
-      cur_gear = next_gear;
-      Serial.write(cur_gear);
+  if (servo) {
+      ax = analogRead(pinAX);
+      ay = analogRead(pinAY);
+      bx = analogRead(pinBX);
+      by = analogRead(pinBY);
+      /**/ if (ay < calibrateAY - bounce)
+        Serial.write(back_rc);
+      else if (ay > calibrateAY + bounce)
+       Serial.write(forward_rc);
+      else if (ax < calibrateAX - bounce)
+        Serial.write(left_rc);
+      else if (ax > calibrateAX + bounce)
+        Serial.write(right_rc);
+      else if (by < calibrateBY - bounce)
+        Serial.write(back2_rc);
+      else if (by > calibrateBY + bounce)
+       Serial.write(forward2_rc);
+      else if (bx < calibrateBX - bounce)
+        Serial.write(left2_rc);
+      else if (bx > calibrateBX + bounce)
+        Serial.write(right2_rc);
+      else 
+        Serial.write(breaking_rc);
+      delay(16);
+  } else {
+    if (digitalRead(switchPinA) == LOW) {
+      Serial.write(changmod_rc);
+      manual = !manual;
+      if (manual)
+        digitalWrite(ledPin, HIGH);
+      else
+        digitalWrite(ledPin, LOW);
+      while (digitalRead(switchPinA) == LOW);
     }
-    if (ay < calibrateAY - bounce)
-      next_cmd = back_rc;
-    else if (ay > calibrateAY + bounce)
-      next_cmd = forward_rc;
-    else if (ax < calibrateAX - bounce)
-      next_cmd = left_rc;
-    else if (ax > calibrateAX + bounce)
-      next_cmd = right_rc;
-    else 
-      next_cmd = breaking_rc;
-    if (next_cmd != cur_cmd) {
-      cur_cmd = next_cmd;
-      Serial.write(cur_cmd);
+    if (manual) {
+      ax = analogRead(pinAX);
+      ay = analogRead(pinAY);
+      if ((ax <= calibrateAX - bounce*3) || (ay <= calibrateAY - bounce*3) || (ax >= calibrateAX + bounce*3) || (ay >= calibrateAY + bounce*3))
+        next_gear = gear2_rc;
+      else
+        next_gear = gear1_rc;
+      if (next_gear != cur_gear) {
+        cur_gear = next_gear;
+        Serial.write(cur_gear);
+      }
+      if (ay < calibrateAY - bounce)
+        next_cmd = back_rc;
+      else if (ay > calibrateAY + bounce)
+        next_cmd = forward_rc;
+      else if (ax < calibrateAX - bounce)
+        next_cmd = left_rc;
+      else if (ax > calibrateAX + bounce)
+        next_cmd = right_rc;
+      else 
+        next_cmd = breaking_rc;
+      if (next_cmd != cur_cmd || next_cmd == breaking_rc) {
+        cur_cmd = next_cmd;
+        Serial.write(cur_cmd);
+      }
     }
   }
 }
