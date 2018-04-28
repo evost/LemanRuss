@@ -20,15 +20,16 @@
 #define changmod_rc 'm'
 #define changsrv_rc 'z'
 int calibrateAX = 512;
-int calibrateAY = 512;    
+int calibrateAY = 512;
 int calibrateBX = 512;
-int calibrateBY = 512;                                                                                           
+int calibrateBY = 512;
 int ax = calibrateAX;
-int ay = calibrateAY;                                                                                        
+int ay = calibrateAY;
 int bx = calibrateBX;
 int by = calibrateBY;
 bool manual = true;
 bool servo = false;
+bool servofast = false;
 char cur_cmd = breaking_rc;
 char next_cmd = cur_cmd;
 char cur_gear = gear2_rc;
@@ -66,6 +67,10 @@ void loop() {
     while (digitalRead(switchPinB) == LOW);
   }
   if (servo) {
+      if (digitalRead(switchPinA) == LOW){
+        servofast = !servofast;
+        while (digitalRead(switchPinA) == LOW);
+      }
       ax = analogRead(pinAX);
       ay = analogRead(pinAY);
       bx = analogRead(pinBX);
@@ -88,7 +93,8 @@ void loop() {
         Serial.write(right2_rc);
       else 
         Serial.write(breaking_rc);
-      delay(16);
+      if(!servofast)
+        delay(16);
   } else {
     if (digitalRead(switchPinA) == LOW) {
       Serial.write(changmod_rc);

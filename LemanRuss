@@ -13,11 +13,17 @@
 #define servo4_pin    13
 #define min_distance  35 //in centimetres
 #define gear_sound    70
-#define gear_1        110
+#define gear_1        250
 #define gear_2        250
-#define servo_min     10
-#define servo_max     170
-#define servo_angle   10
+#define servo1_min     25
+#define servo1_max     155 
+#define servo2_min     25
+#define servo2_max     155 
+#define servo3_min     25
+#define servo3_max     155 
+#define servo4_min     25
+#define servo4_max     155 
+#define servo_angle   1
 #define breaking_rc   '_'
 #define forward_rc    'w'
 #define back_rc       's'
@@ -147,50 +153,50 @@ void loop() {
         switch (command) {
           case forward_rc:
             servo1_angle += servo_angle;
-            if (servo1_angle > servo_max)
-              servo1_angle = servo_max;
+            if (servo1_angle > servo1_max)
+              servo1_angle = servo1_max;
             servo1.write(servo1_angle);
             break;
           case back_rc:
             servo1_angle -= servo_angle;
-            if (servo1_angle < servo_min)
-              servo1_angle = servo_min;
+            if (servo1_angle < servo1_min)
+              servo1_angle = servo1_min;
             servo1.write(servo1_angle);
             break;
           case right_rc:
             servo2_angle += servo_angle;
-            if (servo2_angle > servo_max)
-              servo2_angle = servo_max;
+            if (servo2_angle > servo2_max)
+              servo2_angle = servo2_max;
             servo2.write(servo2_angle);
             break;
           case left_rc:
             servo2_angle -= servo_angle;
-            if (servo2_angle < servo_min)
-              servo2_angle = servo_min;
+            if (servo2_angle < servo2_min)
+              servo2_angle = servo2_min;
             servo2.write(servo2_angle);
             break;
           case forward2_rc:
             servo3_angle += servo_angle;
-            if (servo3_angle > servo_max)
-              servo3_angle = servo_max;
+            if (servo3_angle > servo3_max)
+              servo3_angle = servo3_max;
             servo3.write(servo3_angle);
             break;
           case back2_rc:
             servo3_angle -= servo_angle;
-            if (servo3_angle < servo_min)
-              servo3_angle = servo_min;
+            if (servo3_angle < servo3_min)
+              servo3_angle = servo3_min;
             servo3.write(servo3_angle);
             break;
           case right2_rc:
             servo4_angle += servo_angle;
-            if (servo4_angle > servo_max)
-              servo4_angle = servo_max;
+            if (servo4_angle > servo4_max)
+              servo4_angle = servo4_max;
             servo4.write(servo4_angle);
             break;
           case left2_rc:
             servo4_angle -= servo_angle;
-            if (servo4_angle < servo_min)
-              servo4_angle = servo_min;
+            if (servo4_angle < servo4_min)
+              servo4_angle = servo4_min;
             servo4.write(servo4_angle);
             break;
           case changsrv_rc:
@@ -199,7 +205,6 @@ void loop() {
           default:
             break;
         }
-        delay(32);
       } else {
         switch (command) {
           case forward_rc:
