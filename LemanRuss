@@ -1,106 +1,112 @@
 #include <Servo.h>
-#define SPEED_1       5 //left PWM
-#define DIR_1         4 //HIGH to forward
-#define SPEED_2       6 //right PWM
-#define DIR_2         7 //HIGH to forward
-#define trigPin_left  3 //HC-SR04 Trig
-#define echoPin_left  2 //HC-SR04 Echo
-#define trigPin_right 9 //HC-SR04 Trig
-#define echoPin_right 8 //HC-SR04 Echo
-#define servo1_pin    10
-#define servo2_pin    11
-#define servo3_pin    12
-#define servo4_pin    13
-#define min_distance  35 //in centimetres
+#define SPEED_1       5  // left PWM
+#define DIR_1         4  // HIGH to forward
+#define SPEED_2       6  // right PWM
+#define DIR_2         7  // HIGH to forward
+#define trigPin       3  // HC-SR04 Trig's
+#define echoPin_left  2  // HC-SR04 left Echo
+#define echoPin_right 8  // HC-SR04 right Echo
+#define servo1_pin    10  //поворот манипулятора влево вправо
+#define servo2_pin    11  //поворот манипулятора вверх вниз
+#define servo3_pin    12  //поворот зажима вверх вниз
+#define servo4_pin    13  //сжатие расжатие зажима
+#define servo5_pin    9   //поворот камеры
+#define min_distance  40  // in centimetres
 #define gear_sound    70
-#define gear_1        250
-#define gear_2        250
-#define servo1_min     25
-#define servo1_max     155 
-#define servo2_min     25
-#define servo2_max     155 
-#define servo3_min     25
-#define servo3_max     155 
-#define servo4_min     25
-#define servo4_max     155 
+#define speed_def     191
+#define servo1_min    5
+#define servo1_def    90
+#define servo1_max    175
+#define servo2_min    60
+#define servo2_def    90
+#define servo2_max    120
+#define servo3_min    5
+#define servo3_def    90
+#define servo3_max    175
+#define servo4_min    60
+#define servo4_def    120
+#define servo4_max    180
+#define servo5_min    5
+#define servo5_def    90
+#define servo5_max    175
 #define servo_angle   1
-#define breaking_rc   '_'
+#define logging       false
+//должны быть #0..#127
+#define breaking_rc   ' '
 #define forward_rc    'w'
 #define back_rc       's'
 #define right_rc      'd'
 #define left_rc       'a'
-#define forward2_rc   '8'
-#define back2_rc      '2'
-#define right2_rc     '6'
-#define left2_rc      '4'
-#define gear1_rc      '<'
-#define gear2_rc      '>'
-#define changmod_rc   'm'
-#define changsrv_rc 'z'
-#define logging       false
+#define forward2_rc   'i'
+#define back2_rc      'k'
+#define right2_rc     'l'
+#define left2_rc      'j'
+#define changmod_rc   '<'
+#define changsrv_rc   '>'
+#define servos_to_def '/'
 char command = breaking_rc;
 bool manual = true;
 bool servo = false;
-byte cur_speed = gear_2;
-int servo1_angle = 90;
-int servo2_angle = 90;
-int servo3_angle = 90;
-int servo4_angle = 90;
+byte cur_speed = speed_def;
+int servo1_angle = servo1_def;
+int servo2_angle = servo2_def;
+int servo3_angle = servo3_def;
+int servo4_angle = servo4_def;
+int servo5_angle = servo5_def;
 Servo servo1;
 Servo servo2;
 Servo servo3;
 Servo servo4;
-void forward(){
+Servo servo5;
+void forward() {
   digitalWrite(DIR_1, HIGH);
   digitalWrite(DIR_2, HIGH);
   analogWrite(SPEED_1, cur_speed);
   analogWrite(SPEED_2, cur_speed);
 }
-void breaking(){
+void breaking() {
   analogWrite(SPEED_1, 0);
   analogWrite(SPEED_2, 0);
 }
-void left(){
+void left() {
   digitalWrite(DIR_1, HIGH);
   digitalWrite(DIR_2, LOW);
   analogWrite(SPEED_1, cur_speed);
   analogWrite(SPEED_2, cur_speed);
 }
-void right(){
+void right() {
   digitalWrite(DIR_1, LOW);
   digitalWrite(DIR_2, HIGH);
   analogWrite(SPEED_1, cur_speed);
   analogWrite(SPEED_2, cur_speed);
 }
-void back(){
+void back() {
   digitalWrite(DIR_1, LOW);
   digitalWrite(DIR_2, LOW);
   analogWrite(SPEED_1, cur_speed);
   analogWrite(SPEED_2, cur_speed);
 }
-float distance_left(){
-  digitalWrite(trigPin_left, LOW);
-  delayMicroseconds(5); //2-5 us
-  digitalWrite(trigPin_left, HIGH);
-  delayMicroseconds(10); //10 us
-  digitalWrite(trigPin_left, LOW);
+void dist() {
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(5);  // 2-5 us
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);  // 10 us
+  digitalWrite(trigPin, LOW);
+}
+float distance_left() {
+  dist();
   return pulseIn(echoPin_left, HIGH) / 58.2;
 }
-float distance_right(){
-  digitalWrite(trigPin_right, LOW);
-  delayMicroseconds(5); //2-5 us
-  digitalWrite(trigPin_right, HIGH);
-  delayMicroseconds(10); //10 us
-  digitalWrite(trigPin_right, LOW);
+float distance_right() {
+  dist();
   return pulseIn(echoPin_right, HIGH) / 58.2;
 }
 void beep(uint16_t sound, uint16_t pause, uint16_t count) {
-  for (uint16_t i = 0; i < count; i++){
+  for (uint16_t i = 0; i < count; i++) {
     analogWrite(SPEED_1, gear_sound);
     analogWrite(SPEED_2, gear_sound);
     delay(sound);
-    analogWrite(SPEED_1, 0);
-    analogWrite(SPEED_2, 0);
+    breaking();
     delay(pause);
   }
 }
@@ -109,145 +115,174 @@ void setup() {
   servo2.attach(servo2_pin);
   servo3.attach(servo3_pin);
   servo4.attach(servo4_pin);
+  servo5.attach(servo5_pin);
   servo1_angle = servo1.read();
   servo2_angle = servo2.read();
   servo3_angle = servo3.read();
   servo4_angle = servo4.read();
-  for(int i = 4; i <= 7; i++)    
-    pinMode(i, OUTPUT);  
+  servo5_angle = servo5.read();
+  for (int i = 4; i <= 7; i++)
+    pinMode(i, OUTPUT);
   pinMode(12, INPUT);
-  pinMode(trigPin_left, OUTPUT);
+  pinMode(trigPin, OUTPUT);
   pinMode(echoPin_left, INPUT);
-  pinMode(trigPin_right, OUTPUT);
   pinMode(echoPin_right, INPUT);
   randomSeed(analogRead(0));
-  if (logging) {
+  if (logging)
     Serial.begin(9600);
-    while(!Serial);
-  }
   if (manual) {
     Serial2.begin(9600);
-    while(!Serial2);
+    while (!Serial2);
     while (!Serial2.available());
-    if (Serial2.read() == 'p') {
-      Serial2.write('1');
-      while (Serial2.read() != breaking_rc);
-      beep(256, 128, 3);
-      beep(128, 64, 3);
-    }
+    while (Serial2.read() != forward_rc);
+    Serial2.write(back_rc);
+    while (Serial2.read() != breaking_rc);
+    beep(256, 128, 3);
+    beep(128, 64, 3);
   } else
-      beep(512, 256, 2);
+    beep(512, 256, 2);
 }
 void loop() {
   if (manual) {
-    while (Serial2.available()){
-      command = Serial2.read();
-      if (logging) {
-        Serial.print(command);
-        Serial.print(" $ ");
-        Serial.print(distance_left());
-        Serial.print(" - ");
-        Serial.println(distance_right());
+    while (!Serial2.available());
+    command = Serial2.read();
+    if (logging) {
+      Serial.print(command);
+      Serial.print(" $ ");
+      Serial.print(distance_left());
+      Serial.print(" - ");
+      Serial.println(distance_right());
+    }
+    if (servo) {
+      switch (command) {
+        case forward_rc:
+          servo1_angle += servo_angle;
+          if (servo1_angle > servo1_max)
+            servo1_angle = servo1_max;
+          servo1.write(servo1_angle);
+          break;
+        case back_rc:
+          servo1_angle -= servo_angle;
+          if (servo1_angle < servo1_min)
+            servo1_angle = servo1_min;
+          servo1.write(servo1_angle);
+          break;
+        case right_rc:
+          servo2_angle += servo_angle;
+          if (servo2_angle > servo2_max)
+            servo2_angle = servo2_max;
+          servo2.write(servo2_angle);
+          break;
+        case left_rc:
+          servo2_angle -= servo_angle;
+          if (servo2_angle < servo2_min)
+            servo2_angle = servo2_min;
+          servo2.write(servo2_angle);
+          break;
+        case forward2_rc:
+          servo3_angle += servo_angle;
+          if (servo3_angle > servo3_max)
+            servo3_angle = servo3_max;
+          servo3.write(servo3_angle);
+          break;
+        case back2_rc:
+          servo3_angle -= servo_angle;
+          if (servo3_angle < servo3_min)
+            servo3_angle = servo3_min;
+          servo3.write(servo3_angle);
+          break;
+        case right2_rc:
+          servo4_angle += servo_angle;
+          if (servo4_angle > servo4_max)
+            servo4_angle = servo4_max;
+          servo4.write(servo4_angle);
+          break;
+        case left2_rc:
+          servo4_angle -= servo_angle;
+          if (servo4_angle < servo4_min)
+            servo4_angle = servo4_min;
+          servo4.write(servo4_angle);
+          break;
+        case servos_to_def:
+          servo1.write(servo1_def);
+          servo2.write(servo2_def);
+          servo3.write(servo3_def);
+          servo4.write(servo4_def);
+          break;
+        case changsrv_rc:
+          servo = !servo;
+          break;
+        default:
+          beep(1024, 256, 3);
+          break;
       }
-      if (servo) {
-        switch (command) {
-          case forward_rc:
-            servo1_angle += servo_angle;
-            if (servo1_angle > servo1_max)
-              servo1_angle = servo1_max;
-            servo1.write(servo1_angle);
-            break;
-          case back_rc:
-            servo1_angle -= servo_angle;
-            if (servo1_angle < servo1_min)
-              servo1_angle = servo1_min;
-            servo1.write(servo1_angle);
-            break;
-          case right_rc:
-            servo2_angle += servo_angle;
-            if (servo2_angle > servo2_max)
-              servo2_angle = servo2_max;
-            servo2.write(servo2_angle);
-            break;
-          case left_rc:
-            servo2_angle -= servo_angle;
-            if (servo2_angle < servo2_min)
-              servo2_angle = servo2_min;
-            servo2.write(servo2_angle);
-            break;
-          case forward2_rc:
-            servo3_angle += servo_angle;
-            if (servo3_angle > servo3_max)
-              servo3_angle = servo3_max;
-            servo3.write(servo3_angle);
-            break;
-          case back2_rc:
-            servo3_angle -= servo_angle;
-            if (servo3_angle < servo3_min)
-              servo3_angle = servo3_min;
-            servo3.write(servo3_angle);
-            break;
-          case right2_rc:
-            servo4_angle += servo_angle;
-            if (servo4_angle > servo4_max)
-              servo4_angle = servo4_max;
-            servo4.write(servo4_angle);
-            break;
-          case left2_rc:
-            servo4_angle -= servo_angle;
-            if (servo4_angle < servo4_min)
-              servo4_angle = servo4_min;
-            servo4.write(servo4_angle);
-            break;
-          case changsrv_rc:
-            servo = !servo;
-            break;
-          default:
-            break;
-        }
-      } else {
-        switch (command) {
-          case forward_rc:
-            forward();
-            break;
-          case back_rc:
-            back();
-            break;
-          case right_rc:
-            right();
-            break;
-          case left_rc:
-            left();
-            break;
-          case gear1_rc:
-            cur_speed = gear_1;
-            break;
-          case gear2_rc:
-            cur_speed = gear_2;
-            break;
-          case changmod_rc:
-            cur_speed = gear_1;
-            manual = !manual;
-            break;
-          case changsrv_rc:
-            servo = !servo;
-            break;
-          default:
+    } else {
+      switch (command) {
+        case forward_rc:
+          forward();
+          break;
+        case back_rc:
+          back();
+          break;
+        case right_rc:
+          right();
+          break;
+        case left_rc:
+          left();
+          break;
+        case breaking_rc:
+          breaking();
+          break;
+        case right2_rc:
+          servo5_angle += servo_angle;
+          if (servo5_angle > servo5_max)
+            servo5_angle = servo5_max;
+          servo5.write(servo5_angle);
+          break;
+        case left2_rc:
+          servo5_angle -= servo_angle;
+          if (servo5_angle < servo5_min)
+            servo5_angle = servo5_min;
+          servo5.write(servo5_angle);
+          break;
+        case servos_to_def:
+          servo5.write(servo5_def);
+          break;
+        case changmod_rc:
+          cur_speed = speed_def;
+          manual = !manual;
+          break;
+        case changsrv_rc:
+          servo = !servo;
+          break;
+        default:
+          if (command > 127)
+            cur_speed = command;  // command = 128 + y / 8
+          else {
             breaking();
-            break;
-        }
+            beep(1024, 256, 3);  // error
+          }
+          break;
       }
     }
   } else {
-    if (Serial2.available())
+    while (Serial2.available())
       if (Serial2.read() == changmod_rc)
         manual = !manual;
     if ((distance_left() < min_distance) || (distance_right() < min_distance)) {
-      if (distance_left() >= distance_right())
+      if (distance_left() > distance_right())
         left();
-      else
+      else if (distance_left() > distance_right())
         right();
-      delay(256);
+      else {
+        back();
+        delay(256);
+        if (rand() % 2 == 0)
+          left();
+        else
+          right();
+      }
+      delay(256);  //продолжительность автоповорота
       breaking();
     } else
       forward();

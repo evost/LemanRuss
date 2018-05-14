@@ -1,135 +1,113 @@
-#define switchPinA  11
-#define switchPinB  12
-#define pinAX       A0
-#define pinAY       A1
-#define pinBX       A2
-#define pinBY       A3
-#define ledPin      13
-#define bounce      32
-#define breaking_rc '_'
-#define forward_rc  'w'
-#define back_rc     's'
-#define right_rc    'd'
-#define left_rc     'a'
-#define forward2_rc '8'
-#define back2_rc    '2'
-#define right2_rc   '6'
-#define left2_rc    '4'
-#define gear1_rc    '<'
-#define gear2_rc    '>'
-#define changmod_rc 'm'
-#define changsrv_rc 'z'
-int calibrateAX = 512;
-int calibrateAY = 512;
-int calibrateBX = 512;
-int calibrateBY = 512;
-int ax = calibrateAX;
-int ay = calibrateAY;
-int bx = calibrateBX;
-int by = calibrateBY;
+#define pinX          A0
+#define pinY          A1
+#define keyA          2
+#define keyB          3
+#define keyC          4
+#define keyD          5
+#define keyE          6
+#define keyF          7
+#define keyK          8
+#define led           13
+#define bounce        32
+#define breaking_rc   ' '
+#define forward_rc    'w'
+#define back_rc       's'
+#define right_rc      'd'
+#define left_rc       'a'
+#define forward2_rc   'i'
+#define back2_rc      'k'
+#define right2_rc     'l'
+#define left2_rc      'j'
+#define changmod_rc   '<'
+#define changsrv_rc   '>'
+#define servos_to_def '/'
+int calibrateX = 512;
+int calibrateY = 512;
+int x = calibrateX;
+int y = calibrateY;
 bool manual = true;
 bool servo = false;
-bool servofast = false;
-char cur_cmd = breaking_rc;
-char next_cmd = cur_cmd;
-char cur_gear = gear2_rc;
-char next_gear = cur_gear;
+bool fast = false;
+bool is_break = true;
 void setup() {
-  pinMode(ledPin, OUTPUT);
-  pinMode(switchPinA, INPUT);
-  digitalWrite(switchPinA, HIGH);
-  pinMode(switchPinB, INPUT);
-  digitalWrite(switchPinB, HIGH);
-  calibrateAX = analogRead(pinAX);
-  calibrateAY = analogRead(pinAY);
-  calibrateBX = analogRead(pinBX);
-  calibrateBY = analogRead(pinBY);
+  pinMode(led, OUTPUT);
+  for (byte i = keyA; i <= keyK; i++)
+    pinMode(i, INPUT);
+  calibrateX = analogRead(pinX);
+  calibrateY = analogRead(pinY);
   Serial.begin(9600);
   while (!Serial);
   while (true) {
-    digitalWrite(ledPin, HIGH);
+    Serial.write(forward_rc);
+    digitalWrite(led, HIGH);
     delay(256);
-    digitalWrite(ledPin, LOW);
+    digitalWrite(led, LOW);
     delay(256);
-    Serial.write('p');
     if (Serial.available()) {
-      while (Serial.read() != '1');
-      digitalWrite(ledPin, HIGH);
+      while (Serial.read() != back_rc);
+      digitalWrite(led, HIGH);
       Serial.write(breaking_rc);
       break;
     }
   }
 }
 void loop() {
-  if (digitalRead(switchPinB) == LOW){
-    Serial.write(changsrv_rc);
-    servo = !servo;
-    while (digitalRead(switchPinB) == LOW);
-  }
-  if (servo) {
-      if (digitalRead(switchPinA) == LOW){
-        servofast = !servofast;
-        while (digitalRead(switchPinA) == LOW);
-      }
-      ax = analogRead(pinAX);
-      ay = analogRead(pinAY);
-      bx = analogRead(pinBX);
-      by = analogRead(pinBY);
-      /**/ if (ay < calibrateAY - bounce)
-        Serial.write(back_rc);
-      else if (ay > calibrateAY + bounce)
-       Serial.write(forward_rc);
-      else if (ax < calibrateAX - bounce)
-        Serial.write(left_rc);
-      else if (ax > calibrateAX + bounce)
-        Serial.write(right_rc);
-      else if (by < calibrateBY - bounce)
-        Serial.write(back2_rc);
-      else if (by > calibrateBY + bounce)
-       Serial.write(forward2_rc);
-      else if (bx < calibrateBX - bounce)
-        Serial.write(left2_rc);
-      else if (bx > calibrateBX + bounce)
-        Serial.write(right2_rc);
-      else 
-        Serial.write(breaking_rc);
-      if(!servofast)
-        delay(16);
-  } else {
-    if (digitalRead(switchPinA) == LOW) {
+  if (digitalRead(keyF) == LOW) {
+    if (servo)
+      fast = !fast;
+    else {
       Serial.write(changmod_rc);
       manual = !manual;
       if (manual)
-        digitalWrite(ledPin, HIGH);
+        digitalWrite(led, HIGH);
       else
-        digitalWrite(ledPin, LOW);
-      while (digitalRead(switchPinA) == LOW);
+        digitalWrite(led, LOW);
     }
-    if (manual) {
-      ax = analogRead(pinAX);
-      ay = analogRead(pinAY);
-      if ((ax <= calibrateAX - bounce*3) || (ay <= calibrateAY - bounce*3) || (ax >= calibrateAX + bounce*3) || (ay >= calibrateAY + bounce*3))
-        next_gear = gear2_rc;
-      else
-        next_gear = gear1_rc;
-      if (next_gear != cur_gear) {
-        cur_gear = next_gear;
-        Serial.write(cur_gear);
+    while (digitalRead(keyF) == LOW);
+  }
+  if (digitalRead(keyE) == LOW) {
+    Serial.write(changsrv_rc);
+    servo = !servo;
+    // fast = false;
+    while (digitalRead(keyE) == LOW);
+  }
+  if (digitalRead(keyK) == LOW) {
+    Serial.write(servos_to_def);
+    while (digitalRead(keyK) == LOW);
+  }
+  y = analogRead(pinY);
+  if (servo) {
+    if (y < calibrateY - bounce)
+      Serial.write(back2_rc);
+    else if (y > calibrateY + bounce)
+      Serial.write(forward2_rc);
+  } else if (manual) {
+    if (digitalRead(keyA) != LOW && digitalRead(keyB) != LOW &&
+        digitalRead(keyC) != LOW && digitalRead(keyD) != LOW) {
+      if (!is_break) {
+        Serial.write(breaking_rc);
+        is_break = true;
       }
-      if (ay < calibrateAY - bounce)
-        next_cmd = back_rc;
-      else if (ay > calibrateAY + bounce)
-        next_cmd = forward_rc;
-      else if (ax < calibrateAX - bounce)
-        next_cmd = left_rc;
-      else if (ax > calibrateAX + bounce)
-        next_cmd = right_rc;
-      else 
-        next_cmd = breaking_rc;
-      if (next_cmd != cur_cmd || next_cmd == breaking_rc) {
-        cur_cmd = next_cmd;
-        Serial.write(cur_cmd);
-      }
+    } else {
+      Serial.write(128 + y / 8);
+      is_break = false;
     }
   }
+  x = analogRead(pinX);
+  if (x < calibrateX - bounce)
+    Serial.write(left2_rc);
+  else if (x > calibrateX + bounce)
+    Serial.write(right2_rc);
+  if (digitalRead(keyA) == LOW)
+    Serial.write(forward_rc);
+  else if (digitalRead(keyC) == LOW)
+    Serial.write(back_rc);
+  if (digitalRead(keyB) == LOW)
+    Serial.write(right_rc);
+  else if (digitalRead(keyD) == LOW)
+    Serial.write(left_rc);
+  if (fast && servo)
+    delay(8);
+  else
+    delay(32);
 }
