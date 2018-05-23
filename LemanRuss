@@ -41,7 +41,7 @@
 #define left_s        'A'
 #define forward2_s    'I'
 #define back2_s       'K'
-#define right2_s      'I'
+#define right2_s      'L'
 #define left2_s       'J'
 #define servos_to_def '.'
 #define breaking_rc   ' '
@@ -56,7 +56,6 @@
 #define changmod_rc   '<'
 #define cam_to_def    ','
 bool manual = true;
-bool servo = false;
 unsigned char command = breaking_rc;
 unsigned char speed_cur = speed_def;
 int servo1_angle = servo1_def;
