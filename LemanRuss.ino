@@ -147,8 +147,8 @@ void setup() {
     while (!Serial2);
     while (!Serial2.available());
     while (Serial2.read() != forward_rc);
-    Serial2.write(back_rc);
-    while (Serial2.read() != breaking_rc);
+    Serial2.write(breaking_rc);
+    while (Serial2.read() != back_rc);
     beep(256, 128, 3);
     beep(128, 64, 3);
   } else

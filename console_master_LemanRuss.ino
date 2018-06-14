@@ -36,7 +36,7 @@ int y = calibrate_Y;
 bool manual = true;
 bool servo = false;
 bool fast = false;
-bool is_break = true;
+bool is_break = false;
 void setup() {
   pinMode(led, OUTPUT);
   for (byte i = keyA; i <= keyK; i++)
@@ -52,9 +52,9 @@ void setup() {
     digitalWrite(led, LOW);
     delay(256);
     if (Serial.available()) {
-      while (Serial.read() != back_rc);
+      while (Serial.read() != breaking_rc);
       digitalWrite(led, HIGH);
-      Serial.write(breaking_rc);
+      Serial.write(back_rc);
       break;
     }
   }
