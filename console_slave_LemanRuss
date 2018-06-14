@@ -12,7 +12,7 @@
 #define left_s        'A'
 #define forward2_s    'I'
 #define back2_s       'K'
-#define right2_s      'I'
+#define right2_s      'L'
 #define left2_s       'J'
 #define servos_to_def '.'
 #define breaking_rc   ' '
@@ -33,7 +33,7 @@ int ax = calibrateAX;
 int ay = calibrateAY;
 int bx = calibrateBX;
 int by = calibrateBY;
-bool servo = false;
+bool servo = true;
 bool fast = false;
 char cur_cmd = breaking_rc;
 char next_cmd = cur_cmd;
@@ -54,6 +54,7 @@ void setup() {
 void loop() {
   if (digitalRead(switchPinB) == LOW) {
     servo = !servo;
+    fast = false;
     while (digitalRead(switchPinB) == LOW);
   }
   ax = analogRead(pinAX);
@@ -102,8 +103,11 @@ void loop() {
       while (digitalRead(switchPinA) == LOW);
     }
   }
-  if (fast)
-    delay(8);
+  if (servo)
+    if (fast)
+      delay(8);
+    else
+      delay(32);
   else
-    delay(32);
+    delay(16);
 }

@@ -1,22 +1,23 @@
 #include <Servo.h>
-#define PIRpin        22
-#define buzzer        23
-#define speed_left    5  //left PWM
-#define dir_left      4  //HIGH to forward
-#define speed_right   6  //right PWM
-#define dir_right     7  //HIGH to forward
-#define min_distance  40  // in centimetres
-#define trigPin       3  // HC-SR04 Trig's
-#define echoPin_left  2  // HC-SR04 left Echo
-#define echoPin_right 8  // HC-SR04 right Echo
-#define turn_delay    512
-#define servo1_pin    9  //манипулятор влево вправо
-#define servo2_pin    10  //манипулятор вверх вниз
-#define servo3_pin    11  //зажим вверх вниз
-#define servo4_pin    12  //сжатие расжатие зажима
-#define servo5_pin    13  //поворот камеры
-#define speed_sound   70
-#define speed_def     255
+#define PIRpin        22 //датчик движения
+#define buzzer        23 //зуммер
+#define dir_left      4 //левый мотор
+#define speed_left    5 //левый мотор, PWM
+#define speed_right   6 //правый мотор, PWM
+#define dir_right     7 //правый мотор
+#define min_distance  40 //минимальная дистанция для автоповорота, см
+#define trigPin       3 //HC-SR04 Trig's
+#define echoPin_left  2 //левый HC-SR04 Echo
+#define echoPin_right 8 //правый HC-SR04 Echo
+#define turn_delay    512 //продолжительность автоповорота, мс
+#define servo1_pin    9 //манипулятор влево вправо
+#define servo2_pin    10 //манипулятор вверх вниз
+#define servo3_pin    11 //зажим вверх вниз
+#define servo4_pin    12 //сжатие расжатие зажима
+#define servo5_pin    13 //поворот камеры
+#define speed_sound   70 //значемние ШИМ для писка моторов
+#define speed_def     255 //скорость по умолчанию
+//настройки мнимальных, максимальных и углов серв по-умолчанию
 #define servo1_min    0
 #define servo1_def    75
 #define servo1_max    180
@@ -32,9 +33,8 @@
 #define servo5_min    0
 #define servo5_def    90
 #define servo5_max    180
-#define servo_angle   1
-#define logging       false
-//должны быть #0..#127
+#define servo_angle   1  //шаг поворота сервы за одну команду
+//команды должны быть #0..#127
 #define forward_s     'W'
 #define back_s        'S'
 #define right_s       'D'
@@ -55,7 +55,9 @@
 #define left2_rc      'j'
 #define changmod_rc   '<'
 #define cam_to_def    ','
-bool manual = true;
+//#define DEBUG         true //включение отладки по Serial
+unsigned long standby_time = 0; //переменная отсчета времени в спящем режиме
+bool manual = true; //ручной режим
 unsigned char command = breaking_rc;
 unsigned char speed_cur = speed_def;
 int servo1_angle = servo1_def;
@@ -70,49 +72,44 @@ Servo servo2;
 Servo servo3;
 Servo servo4;
 Servo servo5;
+void set_speed(unsigned char spd) {
+  analogWrite(speed_left, spd);
+  analogWrite(speed_right, spd);
+}
 void forward() {
   digitalWrite(dir_left, HIGH);
   digitalWrite(dir_right, HIGH);
-  analogWrite(speed_left, speed_cur);
-  analogWrite(speed_right, speed_cur);
-}
-void breaking() {
-  analogWrite(speed_left, 0);
-  analogWrite(speed_right, 0);
+  set_speed(speed_cur);
 }
 void left() {
   digitalWrite(dir_left, HIGH);
   digitalWrite(dir_right, LOW);
-  analogWrite(speed_left, speed_cur);
-  analogWrite(speed_right, speed_cur);
+  set_speed(speed_cur);
 }
 void right() {
   digitalWrite(dir_left, LOW);
   digitalWrite(dir_right, HIGH);
-  analogWrite(speed_left, speed_cur);
-  analogWrite(speed_right, speed_cur);
+  set_speed(speed_cur);
 }
 void back() {
   digitalWrite(dir_left, LOW);
   digitalWrite(dir_right, LOW);
-  analogWrite(speed_left, speed_cur);
-  analogWrite(speed_right, speed_cur);
+  set_speed(speed_cur);
 }
-void beep(uint16_t sound, uint16_t pause, uint16_t count) {
-  for (uint16_t i = 0; i < count; i++) {
-    analogWrite(speed_left, speed_sound);
-    analogWrite(speed_right, speed_sound);
+void beep(unsigned int sound, unsigned int pause, unsigned int count) {
+  for (unsigned  i = 0; i < count; i++) {
+    set_speed(speed_sound);
     tone(buzzer, 256, sound);
     delay(sound);
-    breaking();
+    set_speed(0);
     delay(pause);
   }
 }
 void dist() {
   digitalWrite(trigPin, LOW);
-  delayMicroseconds(5);  // 2-5 us
+  delayMicroseconds(5); //2-5 us
   digitalWrite(trigPin, HIGH);
-  delayMicroseconds(10);  // 10 us
+  delayMicroseconds(10); //10 us
   digitalWrite(trigPin, LOW);
 }
 float distance_left() {
@@ -137,13 +134,14 @@ void setup() {
   for (int i = 4; i <= 7; i++)
     pinMode(i, OUTPUT);
   pinMode(trigPin, OUTPUT);
+  pinMode(buzzer, OUTPUT);
   pinMode(echoPin_left, INPUT);
   pinMode(echoPin_right, INPUT);
-  pinMode(buzzer, OUTPUT);
   pinMode(PIRpin, INPUT);
   randomSeed(analogRead(0));
-  if (logging)
-    Serial.begin(9600);
+#ifdef DEBUG
+  Serial.begin(9600);
+#endif
   if (manual) {
     Serial2.begin(9600);
     while (!Serial2);
@@ -157,20 +155,19 @@ void setup() {
     beep(512, 256, 2);
 }
 void loop() {
-  if (logging) {
-    Serial.print(command);
-    Serial.print(" $ ");
-    Serial.print(distance_left());
-    Serial.print(" - ");
-    Serial.println(distance_right());
-  }
+#ifdef DEBUG
+  Serial.print(String(command) + " $ " + String(distance_left()) + " - " + String(distance_right()));
+#endif
   if (manual) {
-    while (!Serial2.available())
-      if (digitalRead(PIRpin) == HIGH) {
-        servo3.write(90);
-        servo3.write(servo3_def);
-        delay(1000);
+    while (!Serial2.available()) {
+      if (millis() - standby_time >= 8192 && digitalRead(PIRpin) == HIGH) {
+        servo3.write(45);
+        delay(256);
+        servo3.write(135);
+        standby_time = millis();
       }
+    }
+    standby_time = millis();
     command = Serial2.read();
     switch (command) {
       case right_s:
@@ -225,7 +222,6 @@ void loop() {
         servo1.write(servo1_def);
         servo2.write(servo2_def);
         servo3.write(servo3_def);
-        //servo4.write(servo4_def);
         break;
       case forward_rc:
         forward();
@@ -240,7 +236,7 @@ void loop() {
         left();
         break;
       case breaking_rc:
-        breaking();
+        set_speed(0);
         break;
       case left2_rc:
         servo5_angle += servo_angle;
@@ -263,10 +259,10 @@ void loop() {
         break;
       default:
         if (command > 127)
-          speed_cur = command; //command = 128 + y / 8
+          speed_cur = command;
         else {
-          breaking();//error
-          tone(buzzer, 256, 512);
+          set_speed(0);
+          tone(buzzer, 256, 512); //error
         }
         break;
     }
@@ -290,7 +286,7 @@ void loop() {
           right();
       }
       delay(turn_delay);
-      breaking();
+      set_speed(0);
     } else {
       forward();
       delay(turn_delay);

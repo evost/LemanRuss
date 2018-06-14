@@ -15,7 +15,7 @@
 #define left_s        'A'
 #define forward2_s    'I'
 #define back2_s       'K'
-#define right2_s      'I'
+#define right2_s      'L'
 #define left2_s       'J'
 #define servos_to_def '.'
 #define breaking_rc   ' '
@@ -113,8 +113,11 @@ void loop() {
     Serial.write(servo ? left_s : left_rc);
   else if (digitalRead(keyD) == LOW)
     Serial.write(servo ? right_s : right_rc);
-  if (fast && servo)
-    delay(8);
+  if (servo)
+    if (fast)
+      delay(8);
+    else
+      delay(32);
   else
-    delay(32);
+    delay(16);
 }
